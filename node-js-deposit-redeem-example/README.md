@@ -2,10 +2,10 @@
 
 This package contains standalone **Node.js + ethers** examples for:
 
-- **deposit**
-- **redeem**
-- **price / info**
-- **status**
+- **deposit**: perform asset deposits with entry-fee handling and preview the expected shares before execution.
+- **redeem**: redeem shares into assets with exit-fee handling and preview the final net assets received.
+- **price / info**: fetch contract information, pricing/conversion data, and deposit/redeem estimates for display or validation.
+- **status**: check balances, allowances, and contract/user readiness before executing transactions.
 
 It also supports:
 
