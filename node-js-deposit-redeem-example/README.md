@@ -1,4 +1,4 @@
-# RWA Client Contract Interaction Example (With Fee v2)
+# RWA Client Contract Interaction Example
 
 This package contains standalone **Node.js + ethers** examples for:
 
