@@ -1,0 +1,17 @@
+{
+  "name": "rwa-client-contract-interaction-with-fee-v2",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "deposit": "node deposit.js",
+    "redeem": "node redeem.js",
+    "price": "node price.js",
+    "status": "node status.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.16.0"
+  }
+}
