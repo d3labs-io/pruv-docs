@@ -1,0 +1,16 @@
+{
+  "name": "@pruv-bridge/scripts-rwa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PRUV Bridge RWA token automation scripts",
+  "scripts": {
+    "bridge": "tsx src/main.ts",
+    "bridge:kaia-to-pruv": "tsx src/main.ts --source-chain kaia --destination-chain pruv",
+    "bridge:pruv-to-kaia": "tsx src/main.ts --source-chain pruv --destination-chain kaia"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "ethers": "^5.8.0",
+    "tsx": "^4.19.1"
+  }
+}
