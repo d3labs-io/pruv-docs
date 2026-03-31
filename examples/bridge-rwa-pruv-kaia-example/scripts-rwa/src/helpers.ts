@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import { ERC20_ABI } from './config';
-import { TokenInfo } from './types';
+import { ERC20_ABI, WARP_ROUTE_ABI } from './config';
+import { ChainConfig, TokenInfo } from './types';
 
 // ============ Formatting Helpers ============
 
@@ -15,6 +15,25 @@ export function printSeparator(): void {
 }
 
 // ============ Token Helpers ============
+
+/**
+ * Resolves the underlying token address from a warp route contract.
+ * Calls `wrappedToken()` on-chain; falls back to the warp route address
+ * itself (synthetic HypERC20 routes where the warp route IS the token).
+ */
+export async function getWrappedToken(
+  chain: ChainConfig,
+  signerOrProvider: ethers.Signer | ethers.providers.Provider,
+): Promise<string> {
+  const contract = new ethers.Contract(chain.warpRoute, WARP_ROUTE_ABI, signerOrProvider);
+  try {
+    return await contract.wrappedToken();
+  } catch {
+    // Synthetic routes (e.g. HypERC20) don't expose wrappedToken();
+    // the warp route address itself is the token.
+    return chain.warpRoute;
+  }
+}
 
 /**
  * Fetches symbol and decimals for an ERC20 token.

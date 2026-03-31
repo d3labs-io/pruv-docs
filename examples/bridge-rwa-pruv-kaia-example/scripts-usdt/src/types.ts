@@ -8,7 +8,6 @@ export interface ChainConfig {
   chainId: number;
   rpcUrl: string;
   warpRoute: string;
-  tokenAddress: string;
   explorerTxUrl: string;
 }
 

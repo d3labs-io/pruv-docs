@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import { CHAINS, ERC20_ABI, WARP_ROUTE_ABI } from './config';
 import { Quote, FlowLog } from './types';
 import { parseArgs } from './args';
-import { addressToBytes32, printSeparator, getTokenInfo, ensureAllowance } from './helpers';
+import { addressToBytes32, printSeparator, getTokenInfo, ensureAllowance, getWrappedToken } from './helpers';
 import { appendToOutputMd } from './flow-logger';
 import { waitForRelayedMessage } from './relay-listener';
 
@@ -22,7 +22,15 @@ async function bridge(): Promise<void> {
   const args = parseArgs();
   const srcChain = CHAINS[args.sourceChain];
   const dstChain = CHAINS[args.destinationChain];
-  const tokenAddress = srcChain.tokenAddress;
+
+  // Connect to source chain
+  const provider = new ethers.providers.JsonRpcProvider(srcChain.rpcUrl);
+  const wallet = new ethers.Wallet(args.privateKey, provider);
+  const senderAddress = wallet.address;
+  const recipientAddress = args.recipient || senderAddress;
+
+  // Resolve the underlying token address from the warp route contract
+  const tokenAddress = await getWrappedToken(srcChain, wallet);
 
   printSeparator();
   console.log('🌉 PRUV Bridge — RWA Token Transfer Remote');
@@ -32,12 +40,6 @@ async function bridge(): Promise<void> {
   console.log(`  Token:       ${tokenAddress}`);
   console.log(`  Amount:      ${args.tokenAmount}`);
   printSeparator();
-
-  // Connect to source chain
-  const provider = new ethers.providers.JsonRpcProvider(srcChain.rpcUrl);
-  const wallet = new ethers.Wallet(args.privateKey, provider);
-  const senderAddress = wallet.address;
-  const recipientAddress = args.recipient || senderAddress;
 
   console.log(`\n  Sender:      ${senderAddress}`);
   console.log(`  Recipient:   ${recipientAddress}`);
