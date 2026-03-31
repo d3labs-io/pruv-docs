@@ -6,7 +6,7 @@ import { ChainConfig, TokenInfo } from './types';
 
 /** Pads an address to 32 bytes (Hyperlane recipient format). */
 export function addressToBytes32(address: string): string {
-  return ethers.utils.hexZeroPad(address, 32);
+  return ethers.zeroPadValue(address, 32);
 }
 
 /** Prints a visual separator line to the console. */
@@ -23,7 +23,7 @@ export function printSeparator(): void {
  */
 export async function getWrappedToken(
   chain: ChainConfig,
-  signerOrProvider: ethers.Signer | ethers.providers.Provider,
+  signerOrProvider: ethers.Signer | ethers.Provider,
 ): Promise<string> {
   const contract = new ethers.Contract(chain.warpRoute, WARP_ROUTE_ABI, signerOrProvider);
   try {
@@ -41,7 +41,7 @@ export async function getWrappedToken(
  */
 export async function getTokenInfo(
   tokenAddress: string,
-  signerOrProvider: ethers.Signer | ethers.providers.Provider,
+  signerOrProvider: ethers.Signer | ethers.Provider,
 ): Promise<TokenInfo> {
   const contract = new ethers.Contract(tokenAddress, ERC20_ABI, signerOrProvider);
   try {
@@ -64,7 +64,7 @@ export async function getTokenInfo(
 export async function ensureAllowance(
   tokenAddress: string,
   spender: string,
-  requiredAmount: ethers.BigNumber,
+  requiredAmount: bigint,
   wallet: ethers.Wallet,
   explorerTxUrl: string,
   label: string,
@@ -73,16 +73,16 @@ export async function ensureAllowance(
   const info = await getTokenInfo(tokenAddress, wallet);
   const currentAllowance = await token.allowance(wallet.address, spender);
 
-  if (currentAllowance.gte(requiredAmount)) {
+  if (currentAllowance >= requiredAmount) {
     console.log(
-      `  ✅ ${label} already approved (${ethers.utils.formatUnits(currentAllowance, info.decimals)} ${info.symbol})`,
+      `  ✅ ${label} already approved (${ethers.formatUnits(currentAllowance, info.decimals)} ${info.symbol})`,
     );
     return undefined;
   }
 
-  const formatted = ethers.utils.formatUnits(requiredAmount, info.decimals);
+  const formatted = ethers.formatUnits(requiredAmount, info.decimals);
   console.log(
-    `  Current allowance: ${ethers.utils.formatUnits(currentAllowance, info.decimals)} ${info.symbol}`,
+    `  Current allowance: ${ethers.formatUnits(currentAllowance, info.decimals)} ${info.symbol}`,
   );
   console.log(`  Approving ${formatted} ${info.symbol} to warp route...`);
 

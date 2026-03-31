@@ -23,6 +23,8 @@ export const CHAINS: Record<string, ChainConfig> = {
     rpcUrl: 'https://rpc.testnet.pruv.network',
     warpRoute: '0x6a7ac9211E92cF0c4481BC606666b30B2d110592',
     explorerTxUrl: 'https://explorer.testnet.pruv.network/tx/',
+    vaultAddress: '0x16cE242211458bd215eC7304367520F60B0D09c9',
+    whitelistAddress: '0x5E99a135228e8aA91CcBe4Ee409AB1714aEEbe1A',
   },
 };
 
@@ -47,3 +49,24 @@ export const WARP_ROUTE_ABI = [
 
 export const RELAY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 export const POLL_INTERVAL_MS = 5_000;           // 5 seconds
+
+// ============ RWA Vault ABIs (for --mint) ============
+
+export const VAULT_ABI = [
+  'function asset() view returns (address)',
+  'function deposit(uint256 assets, address receiver) returns (uint256 shares)',
+  'function convertToAssets(uint256 shares) view returns (uint256 assets)',
+  'function previewDeposit(uint256 assets) view returns (uint256 shares)',
+  'function rwaFee() view returns (address)',
+  'function balanceOf(address account) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+];
+
+export const WHITELIST_ABI = [
+  'function balanceOf(address account, uint256 id) view returns (uint256)',
+];
+
+export const FEE_ABI = [
+  'function feeOnRaw(uint256 amount, uint256 feeTimingId) view returns (uint256)',
+];

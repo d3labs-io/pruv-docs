@@ -22,7 +22,7 @@ export async function waitForRelayedMessage(
     `  Timeout:      ${RELAY_TIMEOUT_MS / 60_000} minutes`,
   );
 
-  const dstProvider = new ethers.providers.JsonRpcProvider(dstChain.rpcUrl);
+  const dstProvider = new ethers.JsonRpcProvider(dstChain.rpcUrl);
   const dstWarpRoute = new ethers.Contract(
     dstChain.warpRoute,
     WARP_ROUTE_ABI,

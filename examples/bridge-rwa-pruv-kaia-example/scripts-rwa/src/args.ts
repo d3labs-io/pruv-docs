@@ -20,6 +20,9 @@ export function parseArgs(): BridgeArgs {
       if (value && !value.startsWith('--')) {
         parsed[key] = value;
         i++;
+      } else {
+        // Boolean flag with no value (e.g. --mint)
+        parsed[key] = 'true';
       }
     }
   }
@@ -33,6 +36,9 @@ export function parseArgs(): BridgeArgs {
   const destinationChain =
     parsed['destination-chain'] || process.env.DESTINATION_CHAIN || 'pruv';
   const recipient = parsed['recipient'] || process.env.RECIPIENT || '';
+
+  const mintRaw = parsed['mint'] || process.env.MINT || '';
+  const mint = ['true', '1', 'yes'].includes(mintRaw.toLowerCase());
 
   // ── Required fields ──────────────────────────────────────
 
@@ -59,7 +65,7 @@ export function parseArgs(): BridgeArgs {
     process.exit(1);
   }
 
-  if (recipient && !ethers.utils.isAddress(recipient)) {
+  if (recipient && !ethers.isAddress(recipient)) {
     console.error(
       `Error: Invalid recipient address "${recipient}". Must be a valid Ethereum address.`,
     );
@@ -90,11 +96,19 @@ export function parseArgs(): BridgeArgs {
     process.exit(1);
   }
 
+  if (mint && (srcKey !== 'pruv' || dstKey !== 'kaia')) {
+    console.error(
+      'Error: --mint is only available for pruv → kaia direction (RWA vault lives on PRUV).',
+    );
+    process.exit(1);
+  }
+
   return {
     privateKey: privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`,
     tokenAmount,
     sourceChain: srcKey,
     destinationChain: dstKey,
     recipient: recipient || undefined,
+    mint,
   };
 }
