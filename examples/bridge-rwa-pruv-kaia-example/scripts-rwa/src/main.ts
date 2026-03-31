@@ -368,6 +368,56 @@ async function bridge(): Promise<void> {
   flowLog.relayBlock = relayResult.blockNumber;
   flowLog.relayAmount = relayResult.amount;
 
+  // ── Step 6 (optional): Redeem KAI → USDT on PRUV vault ──
+  if (args.redeem && relayResult.status === 'Delivered') {
+    console.log('\n🏦 Step 6: Redeeming RWA tokens via vault...');
+
+    const dstProvider = new ethers.JsonRpcProvider(dstChain.rpcUrl);
+    const dstWallet = new ethers.Wallet(args.privateKey, dstProvider);
+
+    const vaultAddr = dstChain.vaultAddress!;
+    const whitelistAddr = dstChain.whitelistAddress!;
+
+    const vault = new ethers.Contract(vaultAddr, VAULT_ABI, dstWallet);
+    const whitelist = new ethers.Contract(whitelistAddr, WHITELIST_ABI, dstWallet);
+
+    // a. Check whitelist
+    const wlBalance = await whitelist.balanceOf(senderAddress, 1);
+    if (wlBalance === 0n) {
+      console.error('\n❌ User is not whitelisted on PRUV. Cannot redeem.');
+      process.exit(1);
+    }
+    console.log('  ✅ Whitelisted');
+
+    // b. Get asset info
+    const assetAddr: string = await vault.asset();
+    const assetInfo = await getTokenInfo(assetAddr, dstWallet);
+    const dstTokenInfo = await getTokenInfo(vaultAddr, dstWallet);
+
+    // c. Preview redeem
+    const previewAssets: bigint = await vault.previewRedeem(amountBN);
+
+    console.log(`  Shares to redeem: ${ethers.formatUnits(amountBN, dstTokenInfo.decimals)} ${dstTokenInfo.symbol}`);
+    console.log(`  Expected output:  ${ethers.formatUnits(previewAssets, assetInfo.decimals)} ${assetInfo.symbol}`);
+
+    // d. Approve KAI to vault (vault is the share token)
+    await ensureAllowance(vaultAddr, vaultAddr, amountBN, dstWallet, dstChain.explorerTxUrl, dstTokenInfo.symbol);
+
+    // e. Redeem
+    console.log(`  Redeeming ${ethers.formatUnits(amountBN, dstTokenInfo.decimals)} ${dstTokenInfo.symbol}...`);
+    const redeemTx = await vault.redeem(amountBN, senderAddress, senderAddress);
+    console.log(`  📤 Redeem tx: ${dstChain.explorerTxUrl}${redeemTx.hash}`);
+    const redeemReceipt = await redeemTx.wait();
+
+    if (redeemReceipt.status !== 1) {
+      console.error('\n❌ Vault redeem reverted!');
+      process.exit(1);
+    }
+
+    console.log(`  ✅ Redeemed → ${ethers.formatUnits(previewAssets, assetInfo.decimals)} ${assetInfo.symbol} (block ${redeemReceipt.blockNumber})`);
+    printSeparator();
+  }
+
   // ── Write flow log to output.md ────────────────────────────
   appendToOutputMd(flowLog);
 }

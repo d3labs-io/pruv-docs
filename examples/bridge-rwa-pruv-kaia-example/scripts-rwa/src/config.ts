@@ -50,13 +50,15 @@ export const WARP_ROUTE_ABI = [
 export const RELAY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 export const POLL_INTERVAL_MS = 5_000;           // 5 seconds
 
-// ============ RWA Vault ABIs (for --mint) ============
+// ============ RWA Vault ABIs (for --mint / --redeem) ============
 
 export const VAULT_ABI = [
   'function asset() view returns (address)',
   'function deposit(uint256 assets, address receiver) returns (uint256 shares)',
+  'function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)',
   'function convertToAssets(uint256 shares) view returns (uint256 assets)',
   'function previewDeposit(uint256 assets) view returns (uint256 shares)',
+  'function previewRedeem(uint256 shares) view returns (uint256 assets)',
   'function rwaFee() view returns (address)',
   'function balanceOf(address account) view returns (uint256)',
   'function decimals() view returns (uint8)',

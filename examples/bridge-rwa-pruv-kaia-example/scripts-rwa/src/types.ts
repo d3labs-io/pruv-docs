@@ -20,6 +20,7 @@ export interface BridgeArgs {
   destinationChain: string;
   recipient?: string;
   mint?: boolean;
+  redeem?: boolean;
 }
 
 // ============ Token / Quote ============

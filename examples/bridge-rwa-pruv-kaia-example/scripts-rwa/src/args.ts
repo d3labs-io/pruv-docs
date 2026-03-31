@@ -40,6 +40,9 @@ export function parseArgs(): BridgeArgs {
   const mintRaw = parsed['mint'] || process.env.MINT || '';
   const mint = ['true', '1', 'yes'].includes(mintRaw.toLowerCase());
 
+  const redeemRaw = parsed['redeem'] || process.env.REDEEM || '';
+  const redeem = ['true', '1', 'yes'].includes(redeemRaw.toLowerCase());
+
   // ── Required fields ──────────────────────────────────────
 
   if (!privateKey) {
@@ -103,6 +106,18 @@ export function parseArgs(): BridgeArgs {
     process.exit(1);
   }
 
+  if (redeem && (srcKey !== 'kaia' || dstKey !== 'pruv')) {
+    console.error(
+      'Error: --redeem is only available for kaia → pruv direction (RWA vault lives on PRUV).',
+    );
+    process.exit(1);
+  }
+
+  if (mint && redeem) {
+    console.error('Error: --mint and --redeem cannot be used together.');
+    process.exit(1);
+  }
+
   return {
     privateKey: privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`,
     tokenAmount,
@@ -110,5 +125,6 @@ export function parseArgs(): BridgeArgs {
     destinationChain: dstKey,
     recipient: recipient || undefined,
     mint,
+    redeem,
   };
 }
