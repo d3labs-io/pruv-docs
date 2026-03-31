@@ -1,6 +1,7 @@
 import { ChainConfig } from './types';
 
 // ============ Supported Chains ============
+// USDT warp route — token address resolved dynamically via wrappedToken()
 
 export const CHAINS: Record<string, ChainConfig> = {
   kaia: {
@@ -9,7 +10,6 @@ export const CHAINS: Record<string, ChainConfig> = {
     chainId: 1001,
     rpcUrl: 'https://public-en-kairos.node.kaia.io',
     warpRoute: '0x8fe41adb2890df3d591160052fb0e502e4f07f11',
-    tokenAddress: '0xd077a400968890eacc75cdc901f0356c943e4fdb',
     explorerTxUrl: 'https://kairos.kaiascan.io/tx/',
   },
   pruv: {
@@ -18,7 +18,6 @@ export const CHAINS: Record<string, ChainConfig> = {
     chainId: 7336,
     rpcUrl: 'https://rpc.testnet.pruv.network',
     warpRoute: '0xe0f0a2d91ca9a3db5635048f8b2be4a016bba592',
-    tokenAddress: '0xc547f385c7D0A50Bb4b4889dF4d863F0abAD2885',
     explorerTxUrl: 'https://explorer.testnet.pruv.network/tx/',
   },
 };
@@ -34,6 +33,7 @@ export const ERC20_ABI = [
 ];
 
 export const WARP_ROUTE_ABI = [
+  'function wrappedToken() view returns (address)',
   'function transferRemote(uint32 _destination, bytes32 _recipient, uint256 _amountOrId) payable returns (bytes32 messageId)',
   'function quoteTransferRemote(uint32 _destination, bytes32 _recipient, uint256 _amount) view returns (tuple(address token, uint256 amount)[])',
   'event ReceivedTransferRemote(uint32 indexed origin, bytes32 indexed recipient, uint256 amount)',
