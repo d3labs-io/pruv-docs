@@ -10,19 +10,20 @@ import { ChainConfig, TokenInfo, RelayResult } from './types';
  */
 export async function waitForRelayedMessage(
   dstChain: ChainConfig,
-  srcChain: ChainConfig,
+  warpRouteAddress: string,
+  srcDomainId: number,
   recipientAddress: string,
   tokenInfo: TokenInfo,
   timeoutMs: number = RELAY_TIMEOUT_MS,
 ): Promise<RelayResult> {
   printSeparator();
   console.log('⏳ Waiting for relay on destination chain...');
-  console.log(`   Polling ${dstChain.name} (${dstChain.warpRoute}) for ReceivedTransferRemote...`);
-  console.log(`   Origin domain: ${srcChain.domainId}`);
+  console.log(`   Polling ${dstChain.name} (${warpRouteAddress}) for ReceivedTransferRemote...`);
+  console.log(`   Origin domain: ${srcDomainId}`);
   console.log(`   Timeout: ${timeoutMs / 1000}s\n`);
 
   const dstProvider = new ethers.JsonRpcProvider(dstChain.rpcUrl);
-  const warpRoute = new ethers.Contract(dstChain.warpRoute, WARP_ROUTE_ABI, dstProvider);
+  const warpRoute = new ethers.Contract(warpRouteAddress, WARP_ROUTE_ABI, dstProvider);
   const recipientBytes32 = ethers.zeroPadValue(recipientAddress, 32);
   const startBlock = await dstProvider.getBlockNumber();
   const deadline = Date.now() + timeoutMs;
@@ -34,16 +35,14 @@ export async function waitForRelayedMessage(
 
     if (currentBlock > lastBlock) {
       try {
-        const filter = warpRoute.filters.ReceivedTransferRemote(srcChain.domainId, recipientBytes32);
+        const filter = warpRoute.filters.ReceivedTransferRemote(srcDomainId, recipientBytes32);
         const logs = await warpRoute.queryFilter(filter, lastBlock + 1, currentBlock);
 
         if (logs.length > 0) {
           const event = logs[logs.length - 1];
           const parsedArgs = (event as ethers.EventLog).args;
           const amount = parsedArgs ? parsedArgs[2] : undefined;
-          const formatted = amount
-            ? ethers.formatUnits(amount, tokenInfo.decimals)
-            : 'unknown';
+          const formatted = amount ? ethers.formatUnits(amount, tokenInfo.decimals) : 'unknown';
 
           console.log(`  ✅ Relay delivered!`);
           console.log(`     Block:  ${event.blockNumber}`);

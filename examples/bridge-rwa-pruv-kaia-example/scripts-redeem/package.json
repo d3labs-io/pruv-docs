@@ -1,0 +1,14 @@
+{
+  "name": "@pruv-bridge/scripts-redeem",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PRUV Bridge: Bridge RWA Kaia→Pruv, Redeem RWA→USDT, Bridge USDT Pruv→Kaia",
+  "scripts": {
+    "redeem-flow": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "ethers": "^6.16.0",
+    "tsx": "^4.19.1"
+  }
+}

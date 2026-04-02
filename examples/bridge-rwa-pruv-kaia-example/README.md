@@ -2,12 +2,14 @@
 
 Programmatic bridge scripts for transferring tokens between **Kaia Kairos Testnet** and **PRUV Testnet** using the Hyperlane warp route infrastructure.
 
-Two token types are supported:
+Four script packages are available:
 
 | Script | Token | Description |
 |--------|-------|-------------|
-| `scripts-usdt/` | **USDT** | Standard ERC20 stablecoin bridge |
-| `scripts-rwa/` | **RWA (KAI)** | Real World Asset token bridge ("KAIA TEST" / KAI) |
+| `scripts-usdt/` | **USDT** | Standard ERC20 stablecoin bridge (single direction) |
+| `scripts-rwa/` | **RWA (KAI)** | Real World Asset token bridge (single direction) |
+| `scripts-mint/` | **USDT → RWA** | Full mint flow: Bridge USDT (Kaia→Pruv) → Mint RWA (Pruv vault) → Bridge RWA (Pruv→Kaia) |
+| `scripts-redeem/` | **RWA → USDT** | Full redeem flow: Bridge RWA (Kaia→Pruv) → Redeem RWA→USDT (Pruv vault) → Bridge USDT (Pruv→Kaia) |
 
 ---
 
@@ -108,13 +110,23 @@ The fee token (e.g., USDC) may be **different** from the transfer token (e.g., U
 
 ```bash
 # USDT bridge
-cd scripts/scripts-usdt
-yarn install
+cd scripts-usdt
+npm install
 cp .env.example .env
 
 # RWA bridge
-cd scripts/scripts-rwa
-yarn install
+cd scripts-rwa
+npm install
+cp .env.example .env
+
+# Mint flow (USDT → RWA → Kaia)
+cd scripts-mint
+npm install
+cp .env.example .env
+
+# Redeem flow (RWA → USDT → Kaia)
+cd scripts-redeem
+npm install
 cp .env.example .env
 
 # Edit .env with your private key and desired parameters
@@ -127,37 +139,77 @@ cp .env.example .env
 ### USDT Bridge
 
 ```bash
-cd scripts/scripts-usdt
+cd scripts-usdt
 
 # Bridge 1 USDT from Kaia → Pruv (default direction)
-yarn bridge --private-key <YOUR_KEY> --token-amount 1
+npm run bridge -- --private-key <YOUR_KEY> --token-amount 1
 
 # Bridge from Pruv → Kaia
-yarn bridge --source-chain pruv --destination-chain kaia \
+npm run bridge -- --source-chain pruv --destination-chain kaia \
   --private-key <YOUR_KEY> \
   --token-amount 1
 
 # Shortcut scripts
-yarn bridge:kaia-to-pruv
-yarn bridge:pruv-to-kaia
+npm run bridge:kaia-to-pruv
+npm run bridge:pruv-to-kaia
 ```
 
 ### RWA (KAI) Bridge
 
 ```bash
-cd scripts/scripts-rwa
+cd scripts-rwa
 
 # Bridge RWA from PRUV to Kaia (using .env defaults)
-yarn bridge:pruv-to-kaia
+npm run bridge:pruv-to-kaia
 
 # Bridge RWA from Kaia to PRUV
-yarn bridge:kaia-to-pruv
+npm run bridge:kaia-to-pruv
 
 # Custom parameters (CLI flags override .env)
-yarn bridge --source-chain pruv --destination-chain kaia --token-amount 1 --private-key 0x...
+npm run bridge -- --source-chain pruv --destination-chain kaia --token-amount 1 --private-key 0x...
 
 # Send to a different recipient
-yarn bridge --source-chain pruv --destination-chain kaia --token-amount 1 --recipient 0x...
+npm run bridge -- --source-chain pruv --destination-chain kaia --token-amount 1 --recipient 0x...
+```
+
+### Mint Flow (USDT → RWA → Kaia)
+
+A 3-phase automated flow that:
+1. Bridges USDT from Kaia to Pruv (USDT warp route)
+2. Deposits USDT into the RWA vault on Pruv to mint KAI tokens
+3. Bridges the minted KAI tokens from Pruv to Kaia (RWA warp route)
+
+```bash
+cd scripts-mint
+
+# Run the full mint flow (amount is in USDT)
+npm run mint-flow
+
+# Override amount via CLI
+npm run mint-flow -- --token-amount 1 --private-key 0x...
+
+# Send final RWA tokens to a different recipient
+npm run mint-flow -- --token-amount 1 --recipient 0x...
+```
+
+### Redeem Flow (RWA → USDT → Kaia)
+
+A 3-phase automated flow that:
+1. Bridges RWA (KAI) tokens from Kaia to Pruv (RWA warp route)
+2. Redeems KAI tokens via the vault on Pruv to receive USDT
+3. Bridges the received USDT from Pruv to Kaia (USDT warp route)
+
+```bash
+cd scripts-redeem
+
+# Run the full redeem flow (amount is in KAI)
+npm run redeem-flow
+
+# Override amount via CLI
+npm run redeem-flow -- --token-amount 1 --private-key 0x...
+
+# Send final USDT to a different recipient
+npm run redeem-flow -- --token-amount 1 --recipient 0x...
 ```
 
 ---

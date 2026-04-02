@@ -22,14 +22,14 @@ export function printSeparator(): void {
  * itself (synthetic HypERC20 routes where the warp route IS the token).
  */
 export async function getWrappedToken(
-  chain: ChainConfig,
+  warpRouteAddress: string,
   signerOrProvider: ethers.Signer | ethers.Provider,
 ): Promise<string> {
-  const contract = new ethers.Contract(chain.warpRoute, WARP_ROUTE_ABI, signerOrProvider);
+  const contract = new ethers.Contract(warpRouteAddress, WARP_ROUTE_ABI, signerOrProvider);
   try {
     return await contract.wrappedToken();
   } catch {
-    return chain.warpRoute;
+    return warpRouteAddress;
   }
 }
 
@@ -69,7 +69,7 @@ export async function ensureAllowance(
 ): Promise<string | undefined> {
   const token = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
   const info = await getTokenInfo(tokenAddress, wallet);
-  const currentAllowance: bigint = await token.allowance(wallet.address, spender);
+  const currentAllowance = await token.allowance(wallet.address, spender);
 
   if (currentAllowance >= requiredAmount) {
     console.log(

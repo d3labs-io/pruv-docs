@@ -1,0 +1,72 @@
+import { ChainConfig } from './types';
+
+// ============ Supported Chains ============
+// Mint flow uses BOTH warp routes:
+//   Phase 1: USDT warp route (bridge USDT Kaia → Pruv)
+//   Phase 2: Vault on Pruv (deposit USDT → mint RWA)
+//   Phase 3: RWA warp route (bridge RWA Pruv → Kaia)
+
+export const KAIA: ChainConfig = {
+  name: 'Kaia Kairos Testnet',
+  domainId: 1001,
+  chainId: 1001,
+  rpcUrl: 'https://public-en-kairos.node.kaia.io',
+  usdtWarpRoute: '0x8fe41adb2890df3d591160052fb0e502e4f07f11',
+  rwaWarpRoute: '0x1daeeb8410741c38ed77fc0d120186bd6b6e0306',
+  explorerTxUrl: 'https://kairos.kaiascan.io/tx/',
+};
+
+export const PRUV: ChainConfig = {
+  name: 'Pruv Testnet',
+  domainId: 7336,
+  chainId: 7336,
+  rpcUrl: 'https://rpc.testnet.pruv.network',
+  usdtWarpRoute: '0xe0f0a2d91ca9a3db5635048f8b2be4a016bba592',
+  rwaWarpRoute: '0x6a7ac9211E92cF0c4481BC606666b30B2d110592',
+  explorerTxUrl: 'https://explorer.testnet.pruv.network/tx/',
+  vaultAddress: '0x16cE242211458bd215eC7304367520F60B0D09c9',
+  whitelistAddress: '0x5E99a135228e8aA91CcBe4Ee409AB1714aEEbe1A',
+};
+
+// ============ ABIs (minimal) ============
+
+export const ERC20_ABI = [
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function balanceOf(address account) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+];
+
+export const WARP_ROUTE_ABI = [
+  'function wrappedToken() view returns (address)',
+  'function transferRemote(uint32 _destination, bytes32 _recipient, uint256 _amountOrId) payable returns (bytes32 messageId)',
+  'function quoteTransferRemote(uint32 _destination, bytes32 _recipient, uint256 _amount) view returns (tuple(address token, uint256 amount)[])',
+  'event ReceivedTransferRemote(uint32 indexed origin, bytes32 indexed recipient, uint256 amount)',
+];
+
+export const VAULT_ABI = [
+  'function asset() view returns (address)',
+  'function deposit(uint256 assets, address receiver) returns (uint256 shares)',
+  'function redeem(uint256 shares, address receiver, address owner) returns (uint256 assets)',
+  'function convertToAssets(uint256 shares) view returns (uint256 assets)',
+  'function previewDeposit(uint256 assets) view returns (uint256 shares)',
+  'function previewRedeem(uint256 shares) view returns (uint256 assets)',
+  'function rwaFee() view returns (address)',
+  'function balanceOf(address account) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+];
+
+export const WHITELIST_ABI = [
+  'function balanceOf(address account, uint256 id) view returns (uint256)',
+];
+
+export const FEE_ABI = [
+  'function feeOnRaw(uint256 amount, uint256 feeTimingId) view returns (uint256)',
+];
+
+// ============ Constants ============
+
+export const RELAY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+export const POLL_INTERVAL_MS = 5_000;           // 5 seconds
