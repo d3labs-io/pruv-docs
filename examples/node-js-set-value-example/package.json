@@ -1,0 +1,14 @@
+{
+  "name": "rwa-client-set-value-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "value": "node value.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.16.0"
+  }
+}
