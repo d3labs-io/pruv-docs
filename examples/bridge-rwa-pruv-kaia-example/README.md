@@ -2,12 +2,14 @@
 
 Programmatic bridge scripts for transferring tokens between **Kaia Kairos Testnet** and **PRUV Testnet** using the Hyperlane warp route infrastructure.
 
-Two token types are supported:
+Four script packages are available:
 
 | Script | Token | Description |
 |--------|-------|-------------|
-| `scripts-usdt/` | **USDT** | Standard ERC20 stablecoin bridge |
-| `scripts-rwa/` | **RWA (KAI)** | Real World Asset token bridge ("KAIA TEST" / KAI) |
+| `scripts-usdt/` | **USDT** | Standard ERC20 stablecoin bridge (single direction) |
+| `scripts-rwa/` | **RWA (KAI)** | Real World Asset token bridge (single direction), with optional `--mint` / `--redeem` vault steps |
+| `scripts-mint/` | **USDT → RWA** | Full mint flow: Bridge USDT (Kaia→Pruv) → Mint RWA (Pruv vault) → Bridge RWA (Pruv→Kaia) |
+| `scripts-redeem/` | **RWA → USDT** | Full redeem flow: Bridge RWA (Kaia→Pruv) → Redeem RWA→USDT (Pruv vault) → Bridge USDT (Pruv→Kaia) |
 
 ---
 
@@ -108,13 +110,23 @@ The fee token (e.g., USDC) may be **different** from the transfer token (e.g., U
 
 ```bash
 # USDT bridge
-cd scripts/scripts-usdt
-yarn install
+cd scripts-usdt
+npm install
 cp .env.example .env
 
 # RWA bridge
-cd scripts/scripts-rwa
-yarn install
+cd scripts-rwa
+npm install
+cp .env.example .env
+
+# Mint flow (USDT → RWA → Kaia)
+cd scripts-mint
+npm install
+cp .env.example .env
+
+# Redeem flow (RWA → USDT → Kaia)
+cd scripts-redeem
+npm install
 cp .env.example .env
 
 # Edit .env with your private key and desired parameters
@@ -124,40 +136,132 @@ cp .env.example .env
 
 ## Usage
 
-### USDT Bridge
+Each script package ships a `flow.png` diagram of its exact call sequence — see `scripts-<name>/flow.png`.
+
+### Run everything at once
+
+`tools/run-all-flows.sh` executes all eight flows back to back against the
+testnets and prints a PASS/FAIL summary. Each package still reads its own
+`.env`, so set those up first.
 
 ```bash
-cd scripts/scripts-usdt
+./tools/run-all-flows.sh                 # all eight flows
+./tools/run-all-flows.sh mint redeem     # only the named flows
+./tools/run-all-flows.sh --list          # show flow names and their arguments
+USDT_AMOUNT=0.05 RWA_AMOUNT=1 ./tools/run-all-flows.sh
+PREAPPROVE=1 ./tools/run-all-flows.sh    # top up Pruv allowances first (see below)
+```
+
+Per-flow logs land in `.run-logs/<flow>.log`; the script exits non-zero if any
+flow fails, times out, or never reaches its completion marker.
+
+> **Shared testnet key:** the Pruv demo wallet is used by more than one sender.
+> If another sender takes your nonce, a submitted approval silently drops out of
+> the mempool and ethers' `tx.wait()` blocks forever. `FLOW_TIMEOUT` (default
+> 900s) kills such a run, and `PREAPPROVE=1` sets generous allowances up front —
+> via `tools/preapprove-pruv.ts`, which retries with an explicit nonce — so the
+> flows skip approving altogether.
+
+### USDT Bridge
+
+![USDT bridge flow](scripts-usdt/flow.png)
+
+```bash
+cd scripts-usdt
 
 # Bridge 1 USDT from Kaia → Pruv (default direction)
-yarn bridge --private-key <YOUR_KEY> --token-amount 1
+npm run bridge -- --private-key <YOUR_KEY> --token-amount 1
 
 # Bridge from Pruv → Kaia
-yarn bridge --source-chain pruv --destination-chain kaia \
+npm run bridge -- --source-chain pruv --destination-chain kaia \
   --private-key <YOUR_KEY> \
   --token-amount 1
 
 # Shortcut scripts
-yarn bridge:kaia-to-pruv
-yarn bridge:pruv-to-kaia
+npm run bridge:kaia-to-pruv
+npm run bridge:pruv-to-kaia
 ```
 
 ### RWA (KAI) Bridge
 
+![RWA bridge flow](scripts-rwa/flow.png)
+
 ```bash
-cd scripts/scripts-rwa
+cd scripts-rwa
 
 # Bridge RWA from PRUV to Kaia (using .env defaults)
-yarn bridge:pruv-to-kaia
+npm run bridge:pruv-to-kaia
 
 # Bridge RWA from Kaia to PRUV
-yarn bridge:kaia-to-pruv
+npm run bridge:kaia-to-pruv
 
 # Custom parameters (CLI flags override .env)
-yarn bridge --source-chain pruv --destination-chain kaia --token-amount 1 --private-key 0x...
+npm run bridge -- --source-chain pruv --destination-chain kaia --token-amount 1 --private-key 0x...
 
 # Send to a different recipient
-yarn bridge --source-chain pruv --destination-chain kaia --token-amount 1 --recipient 0x...
+npm run bridge -- --source-chain pruv --destination-chain kaia --token-amount 1 --recipient 0x...
+```
+
+Two optional vault steps can be combined with the bridge. `--token-amount` is always
+denominated in **KAI**, and the two flags are mutually exclusive:
+
+| Flag | Direction | What it adds |
+|------|-----------|--------------|
+| `--mint` | `pruv → kaia` only | Before bridging: reverse-calculates the USDT needed for the requested KAI amount (`convertToAssets` + entry fee), approves it and calls `vault.deposit()` on Pruv |
+| `--redeem` | `kaia → pruv` only | After delivery: calls `vault.redeem()` on Pruv to convert the bridged KAI back into USDT |
+
+```bash
+# Mint 1 KAI from the USDT vault on Pruv, then bridge it to Kaia
+npm run bridge -- --source-chain pruv --destination-chain kaia --token-amount 1 --mint
+
+# Bridge 1 KAI to Pruv, then redeem it back into USDT there
+npm run bridge -- --source-chain kaia --destination-chain pruv --token-amount 1 --redeem
+```
+
+Both require the sender to hold the whitelist NFT (ERC1155 id `1`) on Pruv.
+
+### Mint Flow (USDT → RWA → Kaia)
+
+A 3-phase automated flow that:
+1. Bridges USDT from Kaia to Pruv (USDT warp route)
+2. Deposits USDT into the RWA vault on Pruv to mint KAI tokens
+3. Bridges the minted KAI tokens from Pruv to Kaia (RWA warp route)
+
+![Mint flow](scripts-mint/flow.png)
+
+```bash
+cd scripts-mint
+
+# Run the full mint flow (amount is in USDT)
+npm run mint-flow
+
+# Override amount via CLI
+npm run mint-flow -- --token-amount 1 --private-key 0x...
+
+# Send final RWA tokens to a different recipient
+npm run mint-flow -- --token-amount 1 --recipient 0x...
+```
+
+### Redeem Flow (RWA → USDT → Kaia)
+
+A 3-phase automated flow that:
+1. Bridges RWA (KAI) tokens from Kaia to Pruv (RWA warp route)
+2. Redeems KAI tokens via the vault on Pruv to receive USDT
+3. Bridges the received USDT from Pruv to Kaia (USDT warp route)
+
+![Redeem flow](scripts-redeem/flow.png)
+
+```bash
+cd scripts-redeem
+
+# Run the full redeem flow (amount is in KAI)
+npm run redeem-flow
+
+# Override amount via CLI
+npm run redeem-flow -- --token-amount 1 --private-key 0x...
+
+# Send final USDT to a different recipient
+npm run redeem-flow -- --token-amount 1 --recipient 0x...
 ```
 
 ---
@@ -352,38 +456,33 @@ Each bridge execution appends a detailed markdown log to `output.md` (within eac
 
 ## Project Structure
 
+All four packages share the same layout. `args.ts` exists only in the two
+single-hop bridges (`scripts-usdt`, `scripts-rwa`) — the mint and redeem flows
+parse their arguments inline in `main.ts` since they have no direction to choose.
+
 ```
-scripts/
-├── README.md                 # This file
-├── scripts-usdt/             # USDT bridge scripts
-│   ├── .env.example
-│   ├── .gitignore
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── output.md             # Auto-generated execution logs
-│   └── src/
-│       ├── args.ts           # CLI argument parser
-│       ├── config.ts         # Chain configs, contract addresses, ABIs
-│       ├── flow-logger.ts    # Appends structured logs to output.md
-│       ├── helpers.ts        # addressToBytes32, getTokenInfo, ensureAllowance
-│       ├── main.ts           # Bridge orchestration (quote → approve → transfer → relay)
-│       ├── relay-listener.ts # Polls destination chain for ReceivedTransferRemote event
-│       └── types.ts          # TypeScript interfaces
-└── scripts-rwa/              # RWA (KAI) bridge scripts
-    ├── .env.example
-    ├── .gitignore
-    ├── package.json
-    ├── tsconfig.json
-    ├── output.md             # Auto-generated execution logs
-    ├── README.md
-    └── src/
-        ├── args.ts           # CLI argument parser
-        ├── config.ts         # Chain configs, contract addresses, ABIs
-        ├── flow-logger.ts    # Appends structured logs to output.md
-        ├── helpers.ts        # addressToBytes32, getTokenInfo, ensureAllowance
-        ├── main.ts           # Bridge orchestration (quote → approve → transfer → relay)
-        ├── relay-listener.ts # Polls destination chain for ReceivedTransferRemote event
-        └── types.ts          # TypeScript interfaces
+bridge-rwa-pruv-kaia-example/
+├── README.md                     # This file
+├── scripts-usdt/                 # Single-hop USDT bridge (either direction)
+├── scripts-rwa/                  # Single-hop RWA (KAI) bridge, + --mint / --redeem
+├── scripts-mint/                 # 3-phase: USDT Kaia→Pruv → vault mint → KAI Pruv→Kaia
+└── scripts-redeem/               # 3-phase: KAI Kaia→Pruv → vault redeem → USDT Pruv→Kaia
+
+scripts-<name>/
+├── .env.example
+├── .gitignore
+├── package.json
+├── tsconfig.json
+├── flow.png                      # Diagram of this script's call sequence
+├── output.md                     # Auto-generated execution logs (gitignored)
+└── src/
+    ├── args.ts                   # CLI argument parser (usdt / rwa only)
+    ├── config.ts                 # Chain configs, contract addresses, ABIs
+    ├── flow-logger.ts            # Appends structured logs to output.md
+    ├── helpers.ts                # addressToBytes32, getTokenInfo, ensureAllowance
+    ├── main.ts                   # Orchestration (quote → approve → transfer → relay)
+    ├── relay-listener.ts         # Polls destination chain for ReceivedTransferRemote
+    └── types.ts                  # TypeScript interfaces
 ```
 
 ---
@@ -404,7 +503,7 @@ scripts/
 
 - **Token decimals**: Both KAI, USDT, and USDC use 6 decimals. `1 token` = `1,000,000` raw units.
 - **Gas payment**: Currently `0` for both directions (testnet configuration).
-- **Relay time**: Typically 1–10 seconds on testnet (5–10 for RWA, 1–5 for USDT).
+- **Relay time**: Typically 10–60 seconds on testnet, either direction. Scripts poll for up to 10 minutes.
 - **Fee**: 0.1 USDC flat fee on fee-collecting directions only (enforced by RouterFeeCollector on the collateral route).
 - **Quote format differs by route type**: Collateral routes return 3 quotes (gas, transfer, fee). Synthetic routes return only 1 quote (gas). Both scripts handle this gracefully.
 

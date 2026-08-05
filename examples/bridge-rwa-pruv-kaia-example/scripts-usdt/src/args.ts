@@ -59,7 +59,7 @@ export function parseArgs(): BridgeArgs {
     process.exit(1);
   }
 
-  if (recipient && !ethers.utils.isAddress(recipient)) {
+  if (recipient && !ethers.isAddress(recipient)) {
     console.error(
       `Error: Invalid recipient address "${recipient}". Must be a valid Ethereum address.`,
     );

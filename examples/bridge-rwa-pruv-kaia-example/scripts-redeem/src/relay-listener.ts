@@ -10,7 +10,8 @@ import { ChainConfig, TokenInfo, RelayResult } from './types';
  */
 export async function waitForRelayedMessage(
   dstChain: ChainConfig,
-  srcChain: ChainConfig,
+  warpRouteAddress: string,
+  srcDomainId: number,
   recipientAddress: string,
   tokenInfo: TokenInfo,
   humanAmount?: string,
@@ -18,12 +19,12 @@ export async function waitForRelayedMessage(
 ): Promise<RelayResult> {
   printSeparator();
   console.log('⏳ Waiting for relay on destination chain...');
-  console.log(`   Polling ${dstChain.name} (${dstChain.warpRoute}) for ReceivedTransferRemote...`);
-  console.log(`   Origin domain: ${srcChain.domainId}`);
+  console.log(`   Polling ${dstChain.name} (${warpRouteAddress}) for ReceivedTransferRemote...`);
+  console.log(`   Origin domain: ${srcDomainId}`);
   console.log(`   Timeout: ${timeoutMs / 1000}s\n`);
 
   const dstProvider = new ethers.JsonRpcProvider(dstChain.rpcUrl);
-  const warpRoute = new ethers.Contract(dstChain.warpRoute, WARP_ROUTE_ABI, dstProvider);
+  const warpRoute = new ethers.Contract(warpRouteAddress, WARP_ROUTE_ABI, dstProvider);
   const recipientBytes32 = ethers.zeroPadValue(recipientAddress, 32);
   const startBlock = await dstProvider.getBlockNumber();
   const deadline = Date.now() + timeoutMs;
@@ -35,7 +36,7 @@ export async function waitForRelayedMessage(
 
     if (currentBlock > lastBlock) {
       try {
-        const filter = warpRoute.filters.ReceivedTransferRemote(srcChain.domainId, recipientBytes32);
+        const filter = warpRoute.filters.ReceivedTransferRemote(srcDomainId, recipientBytes32);
         const logs = await warpRoute.queryFilter(filter, lastBlock + 1, currentBlock);
 
         if (logs.length > 0) {

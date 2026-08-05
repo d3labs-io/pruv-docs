@@ -1,5 +1,3 @@
-import { ethers } from 'ethers';
-
 // ============ Chain Configuration ============
 
 export interface ChainConfig {
@@ -9,6 +7,7 @@ export interface ChainConfig {
   rpcUrl: string;
   warpRoute: string;
   explorerTxUrl: string;
+  nativeSymbol: string;
 }
 
 // ============ Bridge Arguments ============
@@ -25,7 +24,7 @@ export interface BridgeArgs {
 
 export interface Quote {
   token: string; // address(0) for native token
-  amount: ethers.BigNumber;
+  amount: bigint;
 }
 
 export interface TokenInfo {
