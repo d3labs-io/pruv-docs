@@ -45,35 +45,44 @@ export async function waitForRelayedMessage(
     const currentBlock = await dstProvider.getBlockNumber();
 
     if (currentBlock > lastCheckedBlock) {
-      const events = await dstWarpRoute.queryFilter(
-        filter,
-        lastCheckedBlock + 1,
-        currentBlock,
-      );
-
-      if (events.length > 0) {
-        const event = events[0];
-
-        // Display the user's original human-readable amount.
-        // The event's raw amount is in Hyperlane's internal (scaled) representation,
-        // which may differ from both source and destination token decimals.
-        const displayAmount = `${humanAmount} ${srcTokenInfo.symbol}`;
-
-        printSeparator();
-        console.log('\n✅ Message delivered! Tokens received on destination.');
-        console.log(`  Block:       ${event.blockNumber}`);
-        console.log(`  Tx hash:     ${event.transactionHash}`);
-        console.log(`  Explorer:    ${dstChain.explorerTxUrl}${event.transactionHash}`);
-        console.log(
-          `  Amount:      ${displayAmount}`,
+      // Public RPCs are load-balanced: a node can report a head block that the
+      // node serving the next eth_getLogs has not synced yet, which comes back
+      // as "the header does not exist". Transient — log it and poll again
+      // instead of killing a run whose transfer already succeeded.
+      try {
+        const events = await dstWarpRoute.queryFilter(
+          filter,
+          lastCheckedBlock + 1,
+          currentBlock,
         );
-        printSeparator();
-        return {
-          status: 'Delivered',
-          txHash: event.transactionHash,
-          blockNumber: event.blockNumber,
-          amount: displayAmount,
-        };
+
+        if (events.length > 0) {
+          const event = events[0];
+
+          // Display the user's original human-readable amount.
+          // The event's raw amount is in Hyperlane's internal (scaled) representation,
+          // which may differ from both source and destination token decimals.
+          const displayAmount = `${humanAmount} ${srcTokenInfo.symbol}`;
+
+          printSeparator();
+          console.log('\n✅ Message delivered! Tokens received on destination.');
+          console.log(`  Block:       ${event.blockNumber}`);
+          console.log(`  Tx hash:     ${event.transactionHash}`);
+          console.log(`  Explorer:    ${dstChain.explorerTxUrl}${event.transactionHash}`);
+          console.log(
+            `  Amount:      ${displayAmount}`,
+          );
+          printSeparator();
+          return {
+            status: 'Delivered',
+            txHash: event.transactionHash,
+            blockNumber: event.blockNumber,
+            amount: displayAmount,
+          };
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(`\n  ⚠ getLogs error (retrying): ${msg.slice(0, 80)}`);
       }
 
       lastCheckedBlock = currentBlock;
