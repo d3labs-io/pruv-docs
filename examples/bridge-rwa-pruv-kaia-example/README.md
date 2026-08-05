@@ -138,6 +138,30 @@ cp .env.example .env
 
 Each script package ships a `flow.png` diagram of its exact call sequence — see `scripts-<name>/flow.png`.
 
+### Run everything at once
+
+`tools/run-all-flows.sh` executes all eight flows back to back against the
+testnets and prints a PASS/FAIL summary. Each package still reads its own
+`.env`, so set those up first.
+
+```bash
+./tools/run-all-flows.sh                 # all eight flows
+./tools/run-all-flows.sh mint redeem     # only the named flows
+./tools/run-all-flows.sh --list          # show flow names and their arguments
+USDT_AMOUNT=0.05 RWA_AMOUNT=1 ./tools/run-all-flows.sh
+PREAPPROVE=1 ./tools/run-all-flows.sh    # top up Pruv allowances first (see below)
+```
+
+Per-flow logs land in `.run-logs/<flow>.log`; the script exits non-zero if any
+flow fails, times out, or never reaches its completion marker.
+
+> **Shared testnet key:** the Pruv demo wallet is used by more than one sender.
+> If another sender takes your nonce, a submitted approval silently drops out of
+> the mempool and ethers' `tx.wait()` blocks forever. `FLOW_TIMEOUT` (default
+> 900s) kills such a run, and `PREAPPROVE=1` sets generous allowances up front —
+> via `tools/preapprove-pruv.ts`, which retries with an explicit nonce — so the
+> flows skip approving altogether.
+
 ### USDT Bridge
 
 ![USDT bridge flow](scripts-usdt/flow.png)
