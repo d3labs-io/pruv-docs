@@ -13,8 +13,11 @@
 # never touches it.
 #
 # Env knobs:
-#   USDT_AMOUNT   amount for USDT bridges and the mint flow   (default 0.01 / 0.4)
-#   RWA_AMOUNT    amount for RWA bridges and the redeem flow  (default 0.4)
+#   USDT_AMOUNT   amount for the USDT bridges, in USDT         (default 0.01)
+#   MINT_AMOUNT   USDT deposited by the mint flow              (default 0.4)
+#   RWA_AMOUNT    amount for the RWA bridges, in KAI           (default 0.4)
+#   REDEEM_AMOUNT KAI burned by the redeem flow                (default MINT_AMOUNT * 100)
+#   VAULT_RATIO   KAI per USDT, used to derive REDEEM_AMOUNT   (default 100)
 #   LOG_DIR       where per-flow logs land                    (default ./.run-logs)
 #   FLOW_TIMEOUT  seconds before a hung flow is killed        (default 900)
 #   PREAPPROVE=1  top up Pruv-side allowances before running (see note below)
@@ -33,12 +36,18 @@ MINT_AMOUNT="${MINT_AMOUNT:-0.4}"
 RWA_AMOUNT="${RWA_AMOUNT:-0.4}"
 FLOW_TIMEOUT="${FLOW_TIMEOUT:-900}"
 
+# The vault trades at 100 KAI : 1 USDT, so a mint of N USDT yields N*100 KAI.
+# redeem must burn that many KAI to return the same USDT — otherwise every suite
+# run strands KAI on Kaia and leaves USDT locked in the vault.
+VAULT_RATIO="${VAULT_RATIO:-100}"
+REDEEM_AMOUNT="${REDEEM_AMOUNT:-$(awk "BEGIN{printf \"%g\", $MINT_AMOUNT * $VAULT_RATIO}")}"
+
 # name|package|success marker|args...
 FLOWS=(
   "usdt-k2p|scripts-usdt|Bridge complete|--source-chain kaia --destination-chain pruv --token-amount $USDT_AMOUNT"
   "usdt-p2k|scripts-usdt|Bridge complete|--source-chain pruv --destination-chain kaia --token-amount $USDT_AMOUNT"
   "mint|scripts-mint|MINT FLOW COMPLETE|--token-amount $MINT_AMOUNT"
-  "redeem|scripts-redeem|REDEEM FLOW COMPLETE|--token-amount $RWA_AMOUNT"
+  "redeem|scripts-redeem|REDEEM FLOW COMPLETE|--token-amount $REDEEM_AMOUNT"
   "rwa-k2p|scripts-rwa|Message delivered|--source-chain kaia --destination-chain pruv --token-amount $RWA_AMOUNT"
   "rwa-p2k|scripts-rwa|Message delivered|--source-chain pruv --destination-chain kaia --token-amount $RWA_AMOUNT"
   "rwa-mint|scripts-rwa|Message delivered|--source-chain pruv --destination-chain kaia --token-amount $RWA_AMOUNT --mint"
