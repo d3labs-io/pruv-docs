@@ -13,6 +13,7 @@ export async function waitForRelayedMessage(
   srcChain: ChainConfig,
   recipientAddress: string,
   tokenInfo: TokenInfo,
+  humanAmount?: string,
   timeoutMs: number = RELAY_TIMEOUT_MS,
 ): Promise<RelayResult> {
   printSeparator();
@@ -41,9 +42,10 @@ export async function waitForRelayedMessage(
           const event = logs[logs.length - 1];
           const parsedArgs = (event as ethers.EventLog).args;
           const amount = parsedArgs ? parsedArgs[2] : undefined;
-          const formatted = amount
-            ? ethers.formatUnits(amount, tokenInfo.decimals)
-            : 'unknown';
+          // The event's raw amount is in Hyperlane's internal (scaled) representation,
+          // which may differ from the token's own decimals. Prefer the known human amount.
+          const formatted = humanAmount
+            ?? (amount ? ethers.formatUnits(amount, tokenInfo.decimals) : 'unknown');
 
           console.log(`  ✅ Relay delivered!`);
           console.log(`     Block:  ${event.blockNumber}`);

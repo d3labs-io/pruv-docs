@@ -46,24 +46,25 @@ async function bridge(): Promise<void> {
 
   // Fetch source token decimals to convert human-readable amount → raw
   const srcTokenInfo = await getTokenInfo(tokenAddress, wallet);
-  const amountBN = ethers.parseUnits(args.tokenAmount, srcTokenInfo.decimals);
+  let amountBN: bigint;
+  try {
+    amountBN = ethers.parseUnits(args.tokenAmount, srcTokenInfo.decimals);
+  } catch {
+    console.error(
+      `\n❌ Invalid amount "${args.tokenAmount}": more decimals than ${srcTokenInfo.symbol} supports (${srcTokenInfo.decimals}).`,
+    );
+    process.exit(1);
+  }
   console.log(`  Raw amount:  ${amountBN.toString()} (${srcTokenInfo.decimals} decimals)`);
 
-  // ── Step 1: Approve token to warp route ──
-  console.log('\n📝 Step 1: Approve token for warp route...');
   const warpRoute = new ethers.Contract(srcChain.warpRoute, WARP_ROUTE_ABI, wallet);
-  const approvalTxHash = await ensureAllowance(
-    tokenAddress,
-    srcChain.warpRoute,
-    amountBN,
-    wallet,
-    srcChain.explorerTxUrl,
-    'Warp route',
-  );
-
-  // ── Step 2: Quote interchain gas ──
-  console.log('\n💰 Step 2: Quote interchain gas...');
   const recipientB32 = addressToBytes32(recipientAddress);
+
+  // ── Step 1: Quote interchain gas & fees ──
+  // Quote before approving: fee-enabled routes (HypERC20CollateralWithFee) pull
+  // an extra ERC20 fee on top of the transfer amount, so the required
+  // allowances are only known after the quote.
+  console.log('\n💰 Step 1: Quote interchain gas & fees...');
   const quoteRaw: any[] = await warpRoute.quoteTransferRemote(
     dstChain.domainId,
     recipientB32,
@@ -75,12 +76,59 @@ async function bridge(): Promise<void> {
   }));
 
   let gasValue = 0n;
+  let totalTokenNeeded = amountBN;
+  let feeToken: FlowLog['feeToken'];
+  let feeApprovalTxHash: string | undefined;
+
   for (const q of quotes) {
     if (q.token === ethers.ZeroAddress) {
       gasValue += q.amount;
-      console.log(`  Native gas: ${ethers.formatEther(q.amount)} ETH`);
+      console.log(`  Native gas: ${ethers.formatEther(q.amount)} ${srcChain.nativeSymbol}`);
+    } else if (q.token.toLowerCase() === tokenAddress.toLowerCase()) {
+      // The transfer token itself is quoted — fold it into the approval amount
+      totalTokenNeeded += q.amount;
+      console.log(
+        `  ${srcTokenInfo.symbol} fee:  ${ethers.formatUnits(q.amount, srcTokenInfo.decimals)} ${srcTokenInfo.symbol}`,
+      );
+    } else {
+      // Separate ERC20 fee token (e.g. USDC on Pruv) — needs its own approval
+      const feeInfo = await getTokenInfo(q.token, wallet);
+      const feeFormatted = ethers.formatUnits(q.amount, feeInfo.decimals);
+      console.log(`  Fee token:  ${feeFormatted} ${feeInfo.symbol} (${q.token})`);
+
+      feeToken = {
+        address: q.token,
+        symbol: feeInfo.symbol,
+        decimals: feeInfo.decimals,
+        amount: q.amount.toString(),
+        formatted: `${feeFormatted} ${feeInfo.symbol}`,
+      };
+
+      console.log(`\n📝 Approve fee token (${feeInfo.symbol}) for warp route...`);
+      feeApprovalTxHash = await ensureAllowance(
+        q.token,
+        srcChain.warpRoute,
+        q.amount,
+        wallet,
+        srcChain.explorerTxUrl,
+        `Fee ${feeInfo.symbol}`,
+      );
     }
   }
+  console.log(
+    `  Total ${srcTokenInfo.symbol} needed (transfer + fee): ${ethers.formatUnits(totalTokenNeeded, srcTokenInfo.decimals)} ${srcTokenInfo.symbol}`,
+  );
+
+  // ── Step 2: Approve token to warp route (transfer amount + any token fee) ──
+  console.log('\n📝 Step 2: Approve token for warp route...');
+  const approvalTxHash = await ensureAllowance(
+    tokenAddress,
+    srcChain.warpRoute,
+    totalTokenNeeded,
+    wallet,
+    srcChain.explorerTxUrl,
+    'Warp route',
+  );
 
   // ── Step 3: Send transferRemote ──
   console.log('\n🚀 Step 3: Sending transferRemote...');
@@ -115,8 +163,10 @@ async function bridge(): Promise<void> {
     },
     gasQuote: {
       raw: gasValue.toString(),
-      formatted: `${ethers.formatEther(gasValue)} native`,
+      formatted: `${ethers.formatEther(gasValue)} ${srcChain.nativeSymbol}`,
     },
+    feeToken,
+    feeApprovalTxHash,
     approvalTxHash,
     transferTxHash: transferTx.hash,
     transferBlock: receipt!.blockNumber,
@@ -133,6 +183,7 @@ async function bridge(): Promise<void> {
     srcChain,
     recipientAddress,
     dstTokenInfo,
+    args.tokenAmount,
   );
 
   flowLog.relayTxHash = relayResult.txHash;

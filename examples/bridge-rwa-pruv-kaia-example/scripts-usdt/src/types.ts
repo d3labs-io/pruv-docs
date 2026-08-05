@@ -7,6 +7,7 @@ export interface ChainConfig {
   rpcUrl: string;
   warpRoute: string;
   explorerTxUrl: string;
+  nativeSymbol: string;
 }
 
 // ============ Bridge Arguments ============

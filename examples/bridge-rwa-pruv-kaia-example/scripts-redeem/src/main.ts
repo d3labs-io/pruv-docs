@@ -171,6 +171,7 @@ async function redeemFlow(): Promise<void> {
     KAIA.domainId,
     recipientAddress,
     rwaInfoPruv,
+    rwaAmount,
   );
 
   flowLog.phase1.relayTxHash = rwaRelayResult.txHash;
@@ -348,6 +349,7 @@ async function redeemFlow(): Promise<void> {
     PRUV.domainId,
     recipientAddress,
     usdtInfoKaia,
+    flowLog.phase3.usdtAmount,
   );
 
   flowLog.phase3.relayTxHash = usdtRelayResult.txHash;

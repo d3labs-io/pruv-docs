@@ -177,6 +177,7 @@ async function mintFlow(): Promise<void> {
     KAIA.domainId,
     recipientAddress,
     usdtInfoPruv,
+    usdtAmount,
   );
 
   flowLog.phase1.relayTxHash = usdtRelayResult.txHash;
@@ -393,6 +394,7 @@ async function mintFlow(): Promise<void> {
     PRUV.domainId,
     recipientAddress,
     rwaInfoKaia,
+    flowLog.phase3.rwaAmount,
   );
 
   flowLog.phase3.relayTxHash = rwaRelayResult.txHash;

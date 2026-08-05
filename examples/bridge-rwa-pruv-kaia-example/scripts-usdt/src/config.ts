@@ -11,6 +11,7 @@ export const CHAINS: Record<string, ChainConfig> = {
     rpcUrl: 'https://public-en-kairos.node.kaia.io',
     warpRoute: '0x8fe41adb2890df3d591160052fb0e502e4f07f11',
     explorerTxUrl: 'https://kairos.kaiascan.io/tx/',
+    nativeSymbol: 'KAIA',
   },
   pruv: {
     name: 'Pruv Testnet',
@@ -19,6 +20,7 @@ export const CHAINS: Record<string, ChainConfig> = {
     rpcUrl: 'https://rpc.testnet.pruv.network',
     warpRoute: '0xe0f0a2d91ca9a3db5635048f8b2be4a016bba592',
     explorerTxUrl: 'https://explorer.testnet.pruv.network/tx/',
+    nativeSymbol: 'PRUV',
   },
 };
 
